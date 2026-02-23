@@ -80,7 +80,7 @@ ANSWER STYLE (MANDATORY)
 - Combine multiple values using commas.
 - Do NOT use bullet points, labels, headings, or explanations.
 - Do NOT restate the question.
-- Do NOT include reasoning.
+- Do NOT include reasoning or quotes unless they appear verbatim in the document.
 - Use neutral, formal business language.
 
 ════════════════════════════════════
