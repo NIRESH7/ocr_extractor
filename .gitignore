@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Project Specific
+backend/uploads/
+backend/qdrant_db/
+qdrant_db/
+backend/__pycache__/
+frontend/node_modules/
+backend/venv/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

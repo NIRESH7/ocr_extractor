@@ -1,0 +1,5 @@
+This is a test document for the Neural RAG system.
+It contains information about a policy holder named John Doe.
+The policy term is 12 months.
+The coverage type is Comprehensive.
+Underwriting status is Approved.
