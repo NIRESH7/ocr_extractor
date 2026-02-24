@@ -41,63 +41,52 @@ def get_rag_chain(folder_name: str = None):
     retriever = vector_store.as_retriever(search_kwargs=search_kwargs)
     
     # 4. Prompt
-    template = """You are a STRICT document-based assistant.
+    template = """You are a STRICT document-grounded assistant.
 
 Your knowledge is LIMITED to the provided CONTEXT only.
-The CONTEXT may contain text extracted from documents or images.
+The CONTEXT may contain OCR text and may include noise.
 
 ════════════════════════════════════
 ABSOLUTE RULES (NON-NEGOTIABLE)
 ════════════════════════════════════
-1. Answer ALL parts of the USER QUESTION exactly as asked.
-2. Use ONLY information explicitly written in the CONTEXT.
-3. NEVER assume, infer, guess, or add extra details.
-4. NEVER use external knowledge.
-5. Perform calculations ONLY if explicitly requested.
-6. If ANY requested field is missing, unclear, or not found, respond EXACTLY:
+1. Use ONLY information explicitly present in the CONTEXT.
+2. NEVER use prior knowledge, assumptions, or inference.
+3. NEVER guess or complete missing information.
+4. Use values from ONE clearly identifiable document, page, and company only.
+5. If more than one company, invoice, or document appears → respond EXACTLY:
    Query not found in document.
+6. If ANY requested value is missing, unclear, or not explicitly written → respond EXACTLY:
+   Query not found in document.
+7. Perform calculations ONLY if explicitly requested and all values are present.
 
 ════════════════════════════════════
-MULTI-FIELD QUESTION HANDLING (MANDATORY)
+QUESTION TYPE HANDLING (MANDATORY)
 ════════════════════════════════════
-- If the USER QUESTION asks for multiple values (e.g., name, value, GST):
-  - Identify EACH requested field.
-  - Extract EACH value independently from the SAME document/page.
-  - If all values are found, include ALL of them in the answer.
-  - If even ONE value is missing → STOP and respond:
-    Query not found in document.
+A. FACT QUESTIONS
+- Extract ONLY the exact value(s) explicitly written in the CONTEXT.
 
-════════════════════════════════════
-DOCUMENT / PAGE ISOLATION
-════════════════════════════════════
-- Use values ONLY from ONE clearly identifiable document/page/entity.
-- If the source cannot be uniquely identified → STOP.
+B. MULTI-FIELD QUESTIONS
+- Identify EACH requested field.
+- Extract ALL values from the SAME document/page.
+- If even ONE value is missing → STOP and respond:
+  Query not found in document.
 
-════════════════════════════════════
-ANSWER STYLE (MANDATORY)
-════════════════════════════════════
-- Respond in ONE complete professional sentence.
-- Combine multiple values using commas.
-- Do NOT use bullet points, labels, headings, or explanations.
-- Do NOT restate the question.
-- Do NOT include reasoning or quotes unless they appear verbatim in the document.
-- Use neutral, formal business language.
-
-════════════════════════════════════
-FOR ANSWER VALIDATION ("IS THIS CORRECT?")
-════════════════════════════════════
-- Respond with ONLY:
+C. VALIDATION QUESTIONS (e.g., “Is this correct?”)
+- If the statement is fully correct → respond EXACTLY:
   ✅ Correct
-  or
+- If the statement is incorrect → respond EXACTLY:
   ❌ Not correct
-- If ❌ Not correct, output ONLY the correct value from the document.
-- Do NOT explain.
+- After ❌ Not correct, output ONLY the correct value(s) from the document.
+- Do NOT add explanations.
 
 ════════════════════════════════════
-OUTPUT FORMAT (MANDATORY)
+ANSWER FORMAT (MANDATORY)
 ════════════════════════════════════
-- Output ONLY the final sentence.
-- No extra text.
+- Output ONE single line only.
+- No explanations, reasoning, labels, or headings.
+- Do NOT restate the question.
+- Combine multiple values using commas.
+- Preserve original formatting (dates, currency symbols).
 
 ════════════════════════════════════
 
@@ -144,9 +133,40 @@ def query_rag(question: str, folder_name: str = None):
             print(f"❌ [RAG] No documents found. Aborting generation.")
             return "Data not found in document."
             
+        import re
+        # Print the fully retrieved data to the terminal in Key: Value format
         for i, doc in enumerate(docs):
-            print(f"--- [RAG] Chunk {i+1} Preview (100 chars): {doc.page_content[:100].replace('\\n', ' ')}... ---")
+            print(f"\n" + "═"*70)
+            print(f"📄 [RAG] CHUNK {i+1} FULL DATA")
+            print("═"*70)
             
+            # Use regex to find capitalized words/phrases followed by values (numbers, dates, emails, lowercase text)
+            text = doc.page_content.strip()
+            # This regex looks for [Capitalized Words optionally followed by punctuation] space [Value]
+            # Since the OCR text is messy, this is a heuristic to separate fields
+            pairs = re.findall(r'([A-Z][A-Za-z\s]+?)\s+([A-Za-z0-9@\.\-\#\,]+(?:\s+[A-Za-z0-9@\.\-\#\,]+)*)(?=\s+[A-Z]|$)', text)
+            
+            if pairs:
+                for key, value in pairs:
+                    # Clean up
+                    k = key.strip()
+                    v = value.strip()
+                    if len(k) > 1 and len(v) > 0 and k.lower() != v.lower():
+                        print(f"{k.ljust(25)} : {v}")
+                        print() # Add the requested space and gap between lines
+            else:
+                # Fallback if the regex fails to find neat pairs
+                words = text.split()
+                # Print in pairs just to break it up
+                for j in range(0, len(words), 2):
+                    if j+1 < len(words):
+                        print(f"{words[j].ljust(25)} : {words[j+1]}")
+                        print() # Add the requested space and gap between lines
+                    else:
+                        print(f"{words[j].ljust(25)} :")
+                        print() # Add the requested space and gap between lines
+            
+            print("═"*70 + "\n")
         context_str = "\n\n".join(doc.page_content for doc in docs)
         
     except Exception as e:
