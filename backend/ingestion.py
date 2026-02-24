@@ -13,10 +13,13 @@ warnings.filterwarnings("ignore")
 # Configuration
 COLLECTION_NAME = "local_documents"
 
+from langchain_community.document_loaders import PDFPlumberLoader, TextLoader, Docx2txtLoader
+
 def load_document(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".pdf":
-        loader = PyPDFLoader(file_path)
+        print(f"--- [INGEST] Using PDFPlumberLoader for Layout Preservation on {file_path} ---")
+        loader = PDFPlumberLoader(file_path)
     elif ext == ".docx":
         loader = Docx2txtLoader(file_path)
     elif ext == ".txt":
@@ -27,11 +30,10 @@ def load_document(file_path):
 
 def extract_text_with_ocr(file_path, progress_callback=None):
     """
-    Fallback method to extract text from scanned PDFs using RapidOCR.
+    Fallback method to extract text from scanned PDFs using RapidOCR (No external binaries needed).
     """
     import sys
-    print(f"--- [OCR DEBUG] Python Executable: {sys.executable} ---")
-    print(f"--- [OCR] Starting OCR fallback for: {file_path} ---")
+    print(f"--- [OCR] Starting RapidOCR fallback for: {file_path} ---")
     try:
         from rapidocr_onnxruntime import RapidOCR
         from pypdf import PdfReader
@@ -53,18 +55,13 @@ def extract_text_with_ocr(file_path, progress_callback=None):
                     print(f"--- [OCR] Processing page {i+1} ({len(images)} images) ---")
                     for img in images:
                         try:
-                            # img.data contains the image bytes
-                            print(f"--- [OCR] Running RapidOCR on image ({len(img.data)} bytes)... ---")
                             result, _ = ocr(img.data)
                             if result:
                                 for line in result:
-                                    # line structure: [coords, text, confidence]
                                     if line and len(line) >= 2:
                                         text_content = line[1]
-                                        page_text += text_content + " "
-                                        # Sanitize for console output to avoid encoding errors
-                                        safe_preview = text_content[:50].encode('ascii', 'ignore').decode('ascii')
-                                        print(f"--- [OCR] Extracted: {safe_preview}... ---")
+                                        # Add a newline after each extracted block to prevent too much squishing
+                                        page_text += text_content + "\n"
                         except Exception as img_e:
                             print(f"--- [OCR] Warning: Failed to process an image on page {i+1}: {img_e} ---")
             except Exception as page_e:
@@ -82,12 +79,9 @@ def extract_text_with_ocr(file_path, progress_callback=None):
 
     except ImportError as e:
         print(f"--- [OCR] CRITICAL ERROR: Import failed! {e} ---")
-        print(f"--- [OCR DEBUG] sys.path: {sys.path} ---")
         return []
     except Exception as e:
         print(f"--- [OCR] Critical Error during OCR: {e} ---")
-        import traceback
-        traceback.print_exc()
         return []
 
 def ingest_file(file_path: str, folder_name: str = "default", progress_callback=None):

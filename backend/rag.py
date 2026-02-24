@@ -57,7 +57,8 @@ ABSOLUTE RULES (NON-NEGOTIABLE)
    Query not found in document.
 6. If ANY requested value is missing, unclear, or not explicitly written → respond EXACTLY:
    Query not found in document.
-7. Perform calculations ONLY if explicitly requested and all values are present.
+8. OCR Merged Text Handling: The text is from an OCR engine and lacks layout. Data values often merge with the NEXT header (e.g. `Due Date Email: info@company.com 02-17-2025` means Due Date=02-17-2025 and Email=info@company.com).
+9. Proximity Rule: When multiple similar fields exist (like two different phone numbers or emails), associate values based on chronological proximity to the target entity (e.g. info@topconstruction.com belongs to TopConstructionInc, michael.brown@example.com belongs to Michael Brown).
 
 ════════════════════════════════════
 QUESTION TYPE HANDLING (MANDATORY)
@@ -140,31 +141,36 @@ def query_rag(question: str, folder_name: str = None):
             print(f"📄 [RAG] CHUNK {i+1} FULL DATA")
             print("═"*70)
             
-            # Use regex to find capitalized words/phrases followed by values (numbers, dates, emails, lowercase text)
+            # To guarantee NO data is lost, we print the FULL raw text but add line breaks 
+            # before known labels and headers so it resembles a key-value layout.
+            import re
             text = doc.page_content.strip()
-            # This regex looks for [Capitalized Words optionally followed by punctuation] space [Value]
-            # Since the OCR text is messy, this is a heuristic to separate fields
-            pairs = re.findall(r'([A-Z][A-Za-z\s]+?)\s+([A-Za-z0-9@\.\-\#\,]+(?:\s+[A-Za-z0-9@\.\-\#\,]+)*)(?=\s+[A-Z]|$)', text)
             
-            if pairs:
-                for key, value in pairs:
-                    # Clean up
-                    k = key.strip()
-                    v = value.strip()
-                    if len(k) > 1 and len(v) > 0 and k.lower() != v.lower():
-                        print(f"{k.ljust(25)} : {v}")
-                        print() # Add the requested space and gap between lines
-            else:
-                # Fallback if the regex fails to find neat pairs
-                words = text.split()
-                # Print in pairs just to break it up
-                for j in range(0, len(words), 2):
-                    if j+1 < len(words):
-                        print(f"{words[j].ljust(25)} : {words[j+1]}")
-                        print() # Add the requested space and gap between lines
-                    else:
-                        print(f"{words[j].ljust(25)} :")
-                        print() # Add the requested space and gap between lines
+            # Identify likely fields generically. Instead of hardcoding "Date" or "Phone",
+            # we look for:
+            # 1. Any word(s) ending in a colon (e.g. "Name:")
+            # 2. Or any sequence of Title Case words (e.g. "Invoice Number")
+            # 3. Or any sequence of UPPERCASE words (e.g. "TOTAL AMOUNT")
+            # and inject newlines before them to create a dynamic list format for ANY document.
+            formatted_text = re.sub(
+                r'(\b[A-Za-z\s]+:\s*|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b|\b[A-Z]+(?:\s+[A-Z]+)*\b)', 
+                r'\n\1', 
+                text
+            )
+            
+            # Clean and print every single piece of data
+            lines = [line.strip() for line in formatted_text.split('\n') if line.strip()]
+            
+            for line in lines:
+                # If there's a natural split like 'Phone: 123', make it neat
+                if ':' in line:
+                    parts = line.split(':', 1)
+                    print(f"{parts[0].strip().ljust(25)} : {parts[1].strip()}")
+                else:
+                    # Otherwise print the whole phrase cleanly
+                    print(line)
+                
+                print() # Keep the empty gap between lines
             
             print("═"*70 + "\n")
         context_str = "\n\n".join(doc.page_content for doc in docs)
