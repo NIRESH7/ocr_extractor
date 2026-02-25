@@ -3,7 +3,7 @@ import warnings
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from database import get_qdrant_client
 from langchain_core.documents import Document
 
@@ -149,10 +149,10 @@ def ingest_file(file_path: str, folder_name: str = "default", progress_callback=
     except Exception:
         pre_count = 0
 
-    # Using the community version correctly
-    qdrant = Qdrant(
+    # Using the modern QdrantVectorStore
+    qdrant = QdrantVectorStore(
         client=client,
-        embeddings=embeddings,
+        embedding=embeddings,
         collection_name=COLLECTION_NAME,
     )
     
