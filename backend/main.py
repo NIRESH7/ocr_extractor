@@ -108,6 +108,74 @@ def create_folder(request: CreateFolderRequest):
     save_folder(request.folder_name)
     return {"status": "created", "folder": request.folder_name}
 
+@app.get("/folders/{folder_name}/files")
+def list_folder_files(folder_name: str):
+    print(f"--- [API] Listing files for folder: {folder_name} ---")
+    try:
+        client = get_qdrant_client()
+        # Scroll through points with a filter to find unique filenames
+        # Note: metadata schema matches rag.py (metadata.folder)
+        limit = 100
+        offset = None
+        unique_files = set()
+        
+        # Simple implementation: scroll a reasonable number of points
+        scroll_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="metadata.folder",
+                    match={"value": folder_name}
+                )
+            ]
+        )
+        
+        points, next_page_offset = client.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=scroll_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False
+        )
+        
+        for p in points:
+            if p.payload and "source" in p.payload:
+                unique_files.add(os.path.basename(p.payload["source"]))
+                
+        return {"files": list(unique_files)}
+    except Exception as e:
+        print(f"--- [API] Error listing files: {e} ---")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/folders/{folder_name}")
+def delete_folder(folder_name: str):
+    print(f"--- [API] Deleting folder: {folder_name} ---")
+    try:
+        client = get_qdrant_client()
+        # 1. Delete vectors from Qdrant
+        client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.folder",
+                        match={"value": folder_name}
+                    )
+                ]
+            )
+        )
+        
+        # 2. Remove from folders.json
+        folders = get_folders()
+        if folder_name in folders:
+            folders.remove(folder_name)
+            with open(FOLDERS_FILE, "w") as f:
+                json.dump(folders, f)
+        
+        return {"status": "deleted", "folder": folder_name}
+    except Exception as e:
+        print(f"--- [API] Error deleting folder: {e} ---")
+        raise HTTPException(status_code=500, detail=str(e))
+
 class QueryRequest(BaseModel):
     question: str
     folder: str = "All"

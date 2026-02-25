@@ -96,71 +96,73 @@ const FileUpload = ({ onUploadSuccess, activeFolder }) => {
                 disabled={status === 'uploading'}
             />
 
-            <div className={`p-5 rounded-2xl border border-dashed transition-all duration-300 flex flex-col items-center gap-3 ${status === 'uploading'
-                ? 'border-primary bg-rose-50/30'
-                : 'border-slate-200 bg-white/50 group-hover:border-primary group-hover:bg-rose-50/50 group-hover:shadow-lg group-hover:shadow-rose-100/50'
+            <div className={`p-8 rounded-2xl border border-slate-200 transition-all duration-300 flex flex-col items-center justify-center gap-5 ${status === 'uploading'
+                ? 'bg-indigo-50/50 border-indigo-200'
+                : 'bg-white text-slate-400 hover:bg-slate-50 hover:border-slate-300'
                 }`}>
 
-                <div className={`p-2.5 rounded-xl transition-all duration-300 ${status === 'uploading' ? 'theme-gradient shadow-lg shadow-primary/20 scale-110' : 'bg-slate-100 text-slate-400 group-hover:bg-rose-100 group-hover:text-primary'}`}>
+                <div className={`p-4 rounded-xl transition-all duration-300 ${status === 'uploading' ? 'bg-indigo-600 text-white animate-pulse' : 'bg-white border border-slate-100 text-slate-300 group-hover:text-indigo-600 shadow-sm'}`}>
                     {status === 'uploading' ? (
-                        <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                        <Upload className="w-5 h-5" />
+                        <Upload className="w-6 h-6" />
                     )}
                 </div>
 
                 <div className="text-center">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${status === 'uploading' ? 'text-primary animate-pulse' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                        {status === 'uploading' ? 'Indexing...' : 'Drop Documents'}
+                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${status === 'uploading' ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-700'}`}>
+                        {status === 'uploading' ? 'Ingestion Active' : 'Import Documents'}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-400 mt-1 opacity-60">PDF, DOCX, TXT</p>
+                    <p className="text-[9px] font-black text-slate-300 mt-2 uppercase tracking-widest">System Protocols Enabled</p>
                 </div>
 
                 {status === 'uploading' && (
-                    <div className="w-full space-y-2 mt-1">
-                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-white">
+                    <div className="w-full space-y-4 mt-1">
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
                             <div
-                                className="h-full theme-gradient transition-all duration-300"
+                                className="h-full bg-indigo-600 transition-all duration-500 shadow-lg shadow-indigo-100"
                                 style={{ width: `${progress}%` }}
                             ></div>
                         </div>
-                        {ocrProgress && (
-                            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-300"
-                                    style={{ width: `${ocrProgress.percent}%` }}
-                                ></div>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
 
             {/* Status Feedback Overlay */}
             {(status === 'success' || status === 'error' || status === 'partial') && (
-                <div className="mt-4 p-3 rounded-xl bg-white/80 border border-white shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center gap-2 mb-2">
-                        {status === 'success' && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
-                        {status === 'error' && <AlertCircle className="w-3.5 h-3.5 text-rose-500" />}
-                        {status === 'partial' && <AlertCircle className="w-3.5 h-3.5 text-amber-500" />}
-                        <p className={`text-[10px] font-bold truncate ${status === 'success' ? 'text-emerald-600' : status === 'error' ? 'text-rose-600' : 'text-amber-600'}`}>
-                            {message}
-                        </p>
+                <div className="mt-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-2xl animate-in fade-in slide-in-from-top-3 z-30">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className={`p-2.5 rounded-lg ${status === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            {status === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-black text-slate-800 uppercase tracking-tight">
+                                {status === 'success' ? 'Ingestion Complete' : 'Network Notification'}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-medium truncate">{message}</p>
+                        </div>
                     </div>
 
                     {details.length > 0 && (
-                        <ul className="space-y-1 max-h-24 overflow-y-auto custom-scrollbar pr-1">
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1 border-t border-slate-100 pt-4">
                             {details.map((res, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-[9px] font-bold p-1 rounded-md bg-white/50 border border-slate-50">
-                                    <div className={`w-1 h-1 rounded-full ${res.status === 'success' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
-                                    <span className="text-slate-600 truncate flex-1">{res.filename}</span>
-                                    <span className={res.status === 'success' ? 'text-emerald-500' : 'text-rose-500'}>
-                                        {res.status === 'success' ? 'Ready' : 'Error'}
+                                <div key={idx} className="flex items-center gap-3 text-[10px] font-bold py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                                    <div className={`w-2 h-2 rounded-full ${res.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                    <span className="text-slate-500 truncate flex-1">{res.filename}</span>
+                                    <span className={`${res.status === 'success' ? 'text-emerald-600' : 'text-rose-600'} uppercase text-[9px] tracking-tight`}>
+                                        {res.status === 'success' ? 'Synced' : 'Error'}
                                     </span>
-                                </li>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     )}
+
+                    <button
+                        onClick={() => setStatus('idle')}
+                        className="w-full mt-4 py-3 bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border border-slate-200"
+                    >
+                        Dismiss Overlay
+                    </button>
                 </div>
             )}
         </div>
